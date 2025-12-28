@@ -7,9 +7,9 @@ from pathlib import Path
 import logging
 
 from sqlmodel import Session, select
-
 from dotenv import load_dotenv
-load_dotenv()  # Load .env if present
+
+load_dotenv()
 
 from .database import engine, init_db
 from .models import Project
@@ -20,12 +20,12 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS configuration
+# CORS
 frontend_url = os.getenv('FRONTEND_URL')
 allow_origins = ["http://localhost:5173", "http://localhost:3000"]
 if frontend_url:
     allow_origins.insert(0, frontend_url)
-allow_origins.append("*")  # Allow all in production/deploy (tighten later if needed)
+allow_origins.append("*")  # Remove or tighten in real production
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,59 +35,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# === Frontend Serving Logic ===
-logger = logging.getLogger("uvicorn.error")
-
-# Locate the frontend build (Vite outputs to /dist)
-root = Path(__file__).resolve().parents[2]  # Project root: Full-Stack-App
-default_build = root / "frontend" / "dist"
-build_dir = os.getenv("FRONTEND_BUILD_DIR") or str(default_build)
-build_path = Path(build_dir)
-
-if build_path.exists() and build_path.is_dir():
-    assets_path = build_path / "assets"
-
-    # Serve bundled assets (JS, CSS, images) at /assets
-    if assets_path.exists() and assets_path.is_dir():
-        app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
-        logger.info(f"Static assets mounted at /assets from {assets_path}")
-
-    # Serve index.html at root
-    @app.get("/")
-    async def serve_root():
-        return FileResponse(str(build_path / "index.html"))
-
-    # Catch-all fallback for React Router: serves index.html for any non-API route
-    @app.get("/{full_path:path}")
-    async def serve_react_app(full_path: str):
-        # Important: Do NOT handle /api/* paths here — let actual API routes take priority
-        if full_path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="Not Found")
-        # All other paths → serve the React app (React Router will handle client-side routing)
-        return FileResponse(str(build_path / "index.html"))
-
-    logger.info(f"Frontend serving enabled from {build_path}")
-else:
-    logger.warning(f"Frontend build not found at {build_path}. Run 'npm run build' in frontend directory.")
-
-# === Database Startup ===
-@app.on_event("startup")
-def on_startup():
-    init_db()
-    # Seed a welcome project if database is empty
-    with Session(engine) as session:
-        if not session.exec(select(Project)).first():
-            welcome = Project(
-                title="Welcome: Example Project",
-                description="This project was created as a starter sample.",
-                status="active",
-                priority=1
-            )
-            session.add(welcome)
-            session.commit()
-            logger.info("Seeded welcome project")
-
-# === API Routes ===
+# ====================
+# ALL API ROUTES FIRST
+# ====================
 
 @app.get("/api/projects")
 def list_projects():
@@ -149,7 +99,56 @@ def delete_project(project_id: int):
         return None
 
 
-# Development entrypoint
+# Database startup and seeding
+@app.on_event("startup")
+def on_startup():
+    init_db()
+    with Session(engine) as session:
+        if not session.exec(select(Project)).first():
+            welcome = Project(
+                title="Welcome: Example Project",
+                description="This project was created as a starter sample.",
+                status="active",
+                priority=1
+            )
+            session.add(welcome)
+            session.commit()
+            logging.getLogger("uvicorn.error").info("Seeded welcome project")
+
+
+# ============================
+# FRONTEND SERVING (LAST!)
+# ============================
+
+logger = logging.getLogger("uvicorn.error")
+root = Path(__file__).resolve().parents[2]  # Full-Stack-App root
+default_build = root / "frontend" / "dist"
+build_dir = os.getenv("FRONTEND_BUILD_DIR") or str(default_build)
+build_path = Path(build_dir)
+
+if build_path.exists() and build_path.is_dir():
+    # Serve Vite assets (JS/CSS) at /assets
+    assets_path = build_path / "assets"
+    if assets_path.exists() and assets_path.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
+
+    # Root → index.html
+    @app.get("/")
+    async def serve_root():
+        return FileResponse(str(build_path / "index.html"))
+
+    # Catch-all fallback for React Router — MUST be last
+    @app.get("/{full_path:path}")
+    async def serve_react_app(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        return FileResponse(str(build_path / "index.html"))
+
+    logger.info(f"Frontend serving enabled from {build_path}")
+else:
+    logger.warning(f"Frontend build not found at {build_path}. Run 'npm run build' in frontend/")
+
+# Development runner
 if __name__ == "__main__":
     import uvicorn
     host = os.getenv("HOST", "127.0.0.1")
