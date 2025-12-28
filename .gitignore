@@ -1,0 +1,15 @@
+# Python
+/backend/env
+__pycache__/
+*.py[cod]
+
+# Node
+node_modules/
+dist/
+
+# DB
+backend/database.db
+
+# Editor
+.vscode/
+.DS_Store
