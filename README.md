@@ -11,17 +11,33 @@ Quick start (Windows cmd.exe):
 
 1) Backend
 ```
+
+Environment (.env)
+1. Copy the example file in the backend folder:
+	- `cd full-stack_app/backend` then `copy .env.example .env` (Windows)
+2. Edit `.env` and set `HOST`, `PORT`, and optionally `FRONTEND_URL` (the frontend origin) if needed.
 cd "full-stack_app\\backend"
 python -m venv .venv
 .venv\\Scripts\\activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+# Option A: use uvicorn and pass HOST/PORT via env vars
+# Windows cmd.exe example:
+# set HOST=0.0.0.0 & set PORT=8000 & uvicorn app.main:app --reload --host %HOST% --port %PORT%
+# Option B: run the module which will pick HOST/PORT from .env or env vars
+python -m app.main
 ```
 
 2) Frontend
 ```
+
+Environment (.env)
+1. Copy the example in the frontend folder:
+	- `cd full-stack_app/frontend` then `copy .env.example .env` (Windows)
+2. Edit `.env` and set `VITE_API_URL` if you want the front-end to call a specific backend host (e.g. `http://192.168.1.10:8000/api`).
 cd "full-stack_app\\frontend"
 npm install
+# Optionally configure the backend API url in .env (VITE_API_URL)
+# e.g. VITE_API_URL=http://192.168.1.10:8000/api
 npm run dev
 ```
 

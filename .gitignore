@@ -9,6 +9,10 @@ dist/
 
 # DB
 backend/database.db
+*.env
+backend/.env
+frontend/.env
+*.env.local
 
 # Editor
 .vscode/

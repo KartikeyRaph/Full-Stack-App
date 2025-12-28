@@ -1,6 +1,11 @@
+import os
 from fastapi import FastAPI, HTTPException
 from sqlmodel import Session, select
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+# Load .env from backend folder if present
+load_dotenv()
 
 from .database import engine, init_db
 from .models import Project
@@ -11,10 +16,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS: allow local dev
+# CORS: use FRONTEND_URL from env if provided, otherwise allow common dev origins
+frontend_url = os.getenv('FRONTEND_URL')
+allow_list = ["http://localhost:5173", "http://localhost:3000"]
+if frontend_url:
+    allow_list.insert(0, frontend_url)
+else:
+    allow_list.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "*"],
+    allow_origins=allow_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,6 +46,14 @@ def on_startup():
                         priority=1)
             session.add(p)
             session.commit()
+
+
+if __name__ == '__main__':
+    # Allow running `python -m app.main` during development and pick host/port from env
+    import uvicorn
+    host = os.getenv('HOST', '127.0.0.1')
+    port = int(os.getenv('PORT', '8000'))
+    uvicorn.run('app.main:app', host=host, port=port, reload=True)
 
 
 @app.get("/api/projects")
