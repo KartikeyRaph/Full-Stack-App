@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pathlib import Path
 import logging
 
@@ -29,7 +30,7 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,8 +43,22 @@ default_build = root / 'frontend' / 'dist'
 build_dir = os.getenv('FRONTEND_BUILD_DIR') or str(default_build)
 build_path = Path(build_dir)
 if build_path.exists() and build_path.is_dir():
-    app.mount("/", StaticFiles(directory=str(build_path), html=True), name="frontend")
-    logger.info(f"Mounted frontend static files from {build_path}")
+    # Mount static assets (JS/CSS) at /assets
+    app.mount("/assets", StaticFiles(directory=str(build_path / "assets")), name="assets")
+    
+    # Serve index.html at root
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(str(build_path / "index.html"))
+    
+    # Fallback for React Router (all other paths except /api/*)
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404)
+        return FileResponse(str(build_path / "index.html"))
+    
+    logger.info(f"Serving frontend from {build_path}")
 else:
     logger.debug(f"Frontend build not found at {build_path}; static files not mounted. Build the frontend and set FRONTEND_BUILD_DIR if needed.")
 
