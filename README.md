@@ -16,6 +16,26 @@ Environment (.env)
 1. Copy the example file in the backend folder:
 	- `cd full-stack_app/backend` then `copy .env.example .env` (Windows)
 2. Edit `.env` and set `HOST`, `PORT`, and optionally `FRONTEND_URL` (the frontend origin) if needed.
+3. To serve a built frontend from the backend (production), build the frontend and set `FRONTEND_BUILD_DIR` in the backend `.env` (defaults to `../frontend/dist`).
+
+Production serving example:
+
+1. Build frontend:
+```
+cd full-stack_app/frontend
+npm install
+npm run build
+```
+
+2. Ensure the backend knows where the build is (either leave default or set explicit env):
+```
+cd full-stack_app/backend
+copy .env.example .env
+rem set FRONTEND_BUILD_DIR=..\frontend\dist
+python -m app.main
+```
+
+When a `dist` directory is present, the backend will mount the static files at `/` and serve the React app while exposing `/api/*` endpoints for the API.
 cd "full-stack_app\\backend"
 python -m venv .venv
 .venv\\Scripts\\activate

@@ -3,6 +3,9 @@ from fastapi import FastAPI, HTTPException
 from sqlmodel import Session, select
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+import logging
 
 # Load .env from backend folder if present
 load_dotenv()
@@ -31,6 +34,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve frontend static files if a build is available
+logger = logging.getLogger("uvicorn.error")
+root = Path(__file__).resolve().parents[2]  # full-stack_app
+default_build = root / 'frontend' / 'dist'
+build_dir = os.getenv('FRONTEND_BUILD_DIR') or str(default_build)
+build_path = Path(build_dir)
+if build_path.exists() and build_path.is_dir():
+    app.mount("/", StaticFiles(directory=str(build_path), html=True), name="frontend")
+    logger.info(f"Mounted frontend static files from {build_path}")
+else:
+    logger.debug(f"Frontend build not found at {build_path}; static files not mounted. Build the frontend and set FRONTEND_BUILD_DIR if needed.")
 
 
 @app.on_event("startup")
