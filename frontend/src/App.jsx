@@ -146,11 +146,9 @@ export default function App(){
 
           <div style={{height:12}} />
 
-          <div className="card smallpanel muted">Data is persisted to a local SQLite database for reliability and easy inspection.</div>
         </aside>
       </main>
 
-      <footer style={{marginTop:30, textAlign:'center'}} className="muted">Built with FastAPI & React — production-ready starter</footer>
     </div>
   )
 }
